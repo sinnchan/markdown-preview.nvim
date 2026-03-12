@@ -6,6 +6,10 @@ set -o errexit    # exit when command fails
 # goes to the script directory
 cd "$(dirname "$0")"
 
+MERMAID_PACKAGE_URL="https://cdn.jsdelivr.net/npm/mermaid/package.json"
+MERMAID_TARGET="./_static/mermaid.min.js"
+MERMAID_VERSION_FILE="./_static/mermaid.version.json"
+
 BOLD="$(tput bold 2>/dev/null || echo '')"
 GREY="$(tput setaf 0 2>/dev/null || echo '')"
 BLUE="$(tput setaf 4 2>/dev/null || echo '')"
@@ -42,13 +46,13 @@ fetch() {
       set -e
     else
       error "No HTTP download program (curl, wget) found…"
-      exit 1
+      return 1
     fi
   fi
 
   if [ $rc -ne 0 ]; then
     error "Command failed (exit code $rc): ${BLUE}${command}${NO_COLOR}"
-    exit $rc
+    return $rc
   fi
 }
 
@@ -58,11 +62,41 @@ get_latest_release() {
     sed -E 's/.*"([^"]+)".*/\1/'
 }
 
-if [ $# -eq 0 ]; then
-  info "Fetching latest release."
-  tag=$(get_latest_release)
-else
-  tag=$1
+download_mermaid() {
+  info "Fetching latest Mermaid from jsDelivr."
+  local package_info
+  local version
+  local url
+  local tmp_file
+
+  if ! package_info="$(fetch "${MERMAID_PACKAGE_URL}")"; then
+    warn "Could not fetch Mermaid metadata. Keeping bundled Mermaid."
+    return 0
+  fi
+
+  version="$(printf '%s' "${package_info}" | grep '"version"' | head -n 1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')"
+  if [ -z "${version}" ]; then
+    warn "Could not detect Mermaid version from CDN metadata. Keeping bundled Mermaid."
+    return 0
+  fi
+
+  url="https://cdn.jsdelivr.net/npm/mermaid@${version}/dist/mermaid.min.js"
+  tmp_file="$(mktemp "${TMPDIR:-/tmp}/markdown-preview-mermaid.XXXXXX")"
+
+  if fetch "${url}" > "${tmp_file}"; then
+    mv "${tmp_file}" "${MERMAID_TARGET}"
+    printf '{\n  "version": "%s",\n  "url": "%s"\n}\n' "${version}" "${url}" > "${MERMAID_VERSION_FILE}"
+    info "Updated Mermaid to ${version}"
+  else
+    rm -f "${tmp_file}"
+    warn "Could not download Mermaid from ${url}. Keeping bundled Mermaid."
+  fi
+}
+
+mermaid_only=0
+if [ "${1:-}" = "--mermaid-only" ]; then
+  mermaid_only=1
+  shift
 fi
 
 download() {
@@ -78,11 +112,24 @@ download() {
   fi
 }
 
-arch=$(uname -sm)
-case "${arch}" in
-  "Linux x86_64") download markdown-preview-linux.tar.gz ;;
-  "Linux i686") download markdown-preview-linux.tar.gz ;;
-  "Darwin x86_64") download markdown-preview-macos.tar.gz ;;
-  "Darwin arm64") download markdown-preview-macos-arm64.tar.gz ;;
-  *) info "No pre-built binary available for ${arch}.";;
-esac
+if [ "${mermaid_only}" -eq 0 ]; then
+  if [ $# -eq 0 ]; then
+    info "Fetching latest release."
+    tag=$(get_latest_release)
+  else
+    tag=$1
+  fi
+
+  arch=$(uname -sm)
+  case "${arch}" in
+    "Linux x86_64") download markdown-preview-linux.tar.gz ;;
+    "Linux i686") download markdown-preview-linux.tar.gz ;;
+    "Darwin x86_64") download markdown-preview-macos.tar.gz ;;
+    "Darwin arm64") download markdown-preview-macos-arm64.tar.gz ;;
+    *) info "No pre-built binary available for ${arch}.";;
+  esac
+
+  cd "$(dirname "$0")"
+fi
+
+download_mermaid

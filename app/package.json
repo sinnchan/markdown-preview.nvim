@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "markdown preview plugin for (neo)vim",
   "bin": "./index.js",
+  "scripts": {
+    "postinstall": "node ./scripts/fetch-mermaid.js"
+  },
   "repository": "https://github.com/iamcco/markdown-preview.nvim.git",
   "author": "年糕小豆汤 <ooiss@qq.com>",
   "license": "MIT",

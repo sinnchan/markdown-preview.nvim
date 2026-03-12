@@ -3,15 +3,7 @@ import {escape} from './utils';
 /*
  * global mermaid
 */
-const mermaidChart = (code) => {
-  try {
-    // eslint-disable-next-line
-    mermaid.parse(code)
-    return `<div class="mermaid">${escape(code)}</div>`
-  } catch ({ str, hash }) {
-    return `<pre>${str}</pre>`
-  }
-}
+const mermaidChart = (code) => `<div class="mermaid">${escape(code)}</div>`
 
 const MermaidPlugin = (md) => {
   const origin = md.renderer.rules.fence.bind(md.renderer.rules)

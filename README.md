@@ -128,6 +128,9 @@ npx --yes yarn build
 Please make sure that you have installed `node.js` and `yarn`.
 Open `nvim` and run `:PackerInstall` to make it workable
 
+The install step refreshes `app/_static/mermaid.min.js` from jsDelivr with the latest Mermaid release.
+If the CDN request fails, the bundled Mermaid copy is kept as a fallback.
+
 ### MarkdownPreview Config:
 
 ```vim

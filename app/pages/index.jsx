@@ -285,10 +285,22 @@ export default class PreviewPage extends React.Component {
       }, () => {
         if (refreshContent) {
           try {
-            // eslint-disable-next-line
-            mermaid.initialize({ theme: (this.state.theme || 'light'), ...(options.maid || {}) })
-            // eslint-disable-next-line
-            mermaid.init(undefined, document.querySelectorAll('.mermaid'))
+            const mermaidNodes = document.querySelectorAll('.mermaid')
+            const mermaidOptions = { theme: (this.state.theme || 'light'), ...(options.maid || {}) }
+            if (window.markdownPreviewMermaid && typeof window.markdownPreviewMermaid.render === 'function') {
+              window.markdownPreviewMermaid.render(mermaidOptions, mermaidNodes)
+            } else {
+              // eslint-disable-next-line
+              mermaid.initialize({ startOnLoad: false, ...mermaidOptions })
+              // eslint-disable-next-line
+              if (typeof mermaid.run === 'function') {
+                // eslint-disable-next-line
+                mermaid.run({ nodes: mermaidNodes, suppressErrors: true })
+              } else {
+                // eslint-disable-next-line
+                mermaid.init(undefined, mermaidNodes)
+              }
+            }
           } catch (e) { }
 
           chart.render()
@@ -342,6 +354,7 @@ export default class PreviewPage extends React.Component {
           <script type="text/javascript" src="/_static/snap.svg.min.js"></script>
           <script type="text/javascript" src="/_static/tweenlite.min.js"></script>
           <script type="text/javascript" src="/_static/mermaid.min.js"></script>
+          <script type="text/javascript" src="/_static/mermaid-shim.js"></script>
           <script type="text/javascript" src="/_static/sequence-diagram-min.js"></script>
           <script type="text/javascript" src="/_static/katex@0.15.3.js"></script>
           <script type="text/javascript" src="/_static/mhchem.min.js"></script>

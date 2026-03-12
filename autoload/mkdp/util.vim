@@ -141,17 +141,20 @@ endfunction
 function! mkdp#util#install(...)
   let l:version = mkdp#util#pre_build_version()
   let l:info = json_decode(join(readfile(s:mkdp_root_dir . '/package.json'), ''))
+  let l:platform = mkdp#util#get_platform()
+  let l:cmd = (l:platform ==# 'win' ? 'install.cmd' : './install.sh')
   if s:trim(l:version) ==# s:trim(l:info.version)
-    return
+    let l:cmd .= ' --mermaid-only'
+  else
+    let obj = json_decode(join(readfile(s:package_file)))
+    let l:cmd .= ' v'.obj['version']
   endif
-  let obj = json_decode(join(readfile(s:package_file)))
-  let cmd = (mkdp#util#get_platform() ==# 'win' ? 'install.cmd' : './install.sh') . ' v'.obj['version']
   if get(a:, '1', v:false) ==# v:true
     execute 'lcd ' . s:mkdp_root_dir . '/app'
-    execute '!' . cmd
+    execute '!' . l:cmd
   else
     call mkdp#util#open_terminal({
-          \ 'cmd': cmd,
+          \ 'cmd': l:cmd,
           \ 'cwd': s:mkdp_root_dir . '/app',
           \ 'Callback': function('s:markdown_preview_installed')
           \})
@@ -193,4 +196,3 @@ function! mkdp#util#toggle_preview() abort
         let b:MarkdownPreviewToggleBool=0
     endif
 endfunction
-
