@@ -3,12 +3,16 @@
 set -o nounset    # error when referencing undefined variable
 set -o errexit    # exit when command fails
 
-# goes to the script directory
-cd "$(dirname "$0")"
+# Resolve paths from the script location so later `cd` calls do not break
+# asset installs when the script is launched with a relative path.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
 
 MERMAID_PACKAGE_URL="https://cdn.jsdelivr.net/npm/mermaid/package.json"
-MERMAID_TARGET="./_static/mermaid.min.js"
-MERMAID_VERSION_FILE="./_static/mermaid.version.json"
+MERMAID_DIR="${SCRIPT_DIR}/_static"
+MERMAID_TARGET="${MERMAID_DIR}/mermaid.min.js"
+MERMAID_VERSION_FILE="${MERMAID_DIR}/mermaid.version.json"
+BIN_DIR="${SCRIPT_DIR}/bin"
 
 BOLD="$(tput bold 2>/dev/null || echo '')"
 GREY="$(tput setaf 0 2>/dev/null || echo '')"
@@ -84,6 +88,7 @@ download_mermaid() {
   tmp_file="$(mktemp "${TMPDIR:-/tmp}/markdown-preview-mermaid.XXXXXX")"
 
   if fetch "${url}" > "${tmp_file}"; then
+    mkdir -p "${MERMAID_DIR}"
     mv "${tmp_file}" "${MERMAID_TARGET}"
     printf '{\n  "version": "%s",\n  "url": "%s"\n}\n' "${version}" "${url}" > "${MERMAID_VERSION_FILE}"
     info "Updated Mermaid to ${version}"
@@ -100,8 +105,8 @@ if [ "${1:-}" = "--mermaid-only" ]; then
 fi
 
 download() {
-  mkdir -p bin
-  cd bin
+  mkdir -p "${BIN_DIR}"
+  cd "${BIN_DIR}"
   url="https://github.com/iamcco/markdown-preview.nvim/releases/download/$tag/${1}"
   info "Downloading binary from ${url}"
   if fetch "${url}" | tar xzfv -; then
@@ -129,7 +134,7 @@ if [ "${mermaid_only}" -eq 0 ]; then
     *) info "No pre-built binary available for ${arch}.";;
   esac
 
-  cd "$(dirname "$0")"
+  cd "${SCRIPT_DIR}"
 fi
 
 download_mermaid

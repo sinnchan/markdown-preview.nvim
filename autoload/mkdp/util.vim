@@ -142,7 +142,8 @@ function! mkdp#util#install(...)
   let l:version = mkdp#util#pre_build_version()
   let l:info = json_decode(join(readfile(s:mkdp_root_dir . '/package.json'), ''))
   let l:platform = mkdp#util#get_platform()
-  let l:cmd = (l:platform ==# 'win' ? 'install.cmd' : './install.sh')
+  " Run install.sh via bash to avoid execute-bit issues on some package managers.
+  let l:cmd = (l:platform ==# 'win' ? 'install.cmd' : 'bash ./install.sh')
   if s:trim(l:version) ==# s:trim(l:info.version)
     let l:cmd .= ' --mermaid-only'
   else
