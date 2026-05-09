@@ -78,7 +78,7 @@ function servePreviewPage (res) {
 
 // /page/:number
 use((req, res, next) => {
-  if (/\/page\/\d+/.test(req.asPath)) {
+  if (/^\/(?:page\/)?\d+$/.test(req.asPath)) {
     return servePreviewPage(res)
   }
   next()
@@ -157,10 +157,11 @@ use(async (req, res, next) => {
   logger.info('local markdown route: ', req.asPath)
   if (localMarkdownReg.test(req.asPath) && req.asPath !== '') {
     const plugin = req.plugin
+    const bufnr = req.headers['x-mkdp-bufnr'] || req.bufnr
     const buffers = await plugin.nvim.buffers
-    const buffer = buffers.find(b => b.id === Number(req.bufnr))
+    const buffer = buffers.find(b => b.id === Number(bufnr))
     if (buffer) {
-      const fileDir = await getBufferDir(plugin, req.bufnr)
+      const fileDir = await getBufferDir(plugin, bufnr)
       const target = decodeLocalPath(req.asPath, localMarkdownReg)
       const { pathname, hash } = splitLinkTarget(target)
       if (!markdownFileReg.test(pathname)) {
@@ -175,9 +176,16 @@ use(async (req, res, next) => {
         const escapedPath = await plugin.nvim.call('fnameescape', filePath)
         await plugin.nvim.command(`hide edit ${escapedPath}`)
         const currentBuffer = await plugin.nvim.buffer
+        const location = `/page/${currentBuffer.id}${hash ? encodeURI(hash) : ''}`
+
+        if (req.headers['x-mkdp-local-link'] === '1') {
+          res.setHeader('content-type', 'application/json; charset=utf-8')
+          res.end(JSON.stringify({ url: location }))
+          return
+        }
 
         res.statusCode = 302
-        res.setHeader('Location', `/page/${currentBuffer.id}${hash ? encodeURI(hash) : ''}`)
+        res.setHeader('Location', location)
         res.end()
         return
       }
